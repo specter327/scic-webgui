@@ -4,13 +4,13 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "scic-webgui"
-version = "0.2.0"
-description = "Ready-to-use generic web application client for SCIC Framework"
+version = "0.3.0"
+description = "Interactive dashboard application client for SCIC Framework"
 readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE"]
 authors = [{ name = "Specter" }]
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 dependencies = [
     "scic-framework>=0.2.3,<0.3.0",
     "fastapi>=0.115,<1.0",
@@ -23,7 +23,6 @@ classifiers = [
     "Intended Audience :: Developers",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",

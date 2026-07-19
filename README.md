@@ -1,20 +1,24 @@
-# scic-webgui 0.2.0
+# scic-webgui 0.3.0
 
-Adaptive and extensible WebGUI for `scic-framework`.
+Interactive dashboard and extensible web application for [`scic-framework`](https://github.com/specter327/scic-framework).
 
-The library provides a complete application shell automatically, while allowing applications to replace individual input controls, result renderers, or complete resource views without changing SCIC or business services.
+Version 0.3 changes the default interaction model from a command-tree browser into an operational dashboard. The complete SCIC registry is still discovered automatically, but the user starts from modules, system indicators, quick actions, favorites and execution activity.
 
-## Capabilities
+## Dashboard capabilities
 
-- Responsive desktop/mobile application shell.
-- Navigation generated from the SCIC resource tree.
-- Adaptive forms for text, numbers, booleans, secrets, selections, JSON, and files.
-- Drag-and-drop JSON/text files.
-- Structured results: tables, property grids, lists, primitive values, and optional raw JSON.
-- Confirmation for destructive operations through SCIC metadata.
-- Light/dark theme packages.
-- Browser extension API for specialized interfaces.
-- FastAPI application ready to mount or serve.
+- Operational landing page generated from the SCIC tree.
+- Module cards with operation and subcontext counts.
+- Interactive health scan for parameterless `status`, `health`, `summary` and `info` commands.
+- Quick actions inferred from semantic command names or SCIC metadata.
+- Command palette with `Ctrl+K` search.
+- Favorites persisted in browser storage.
+- Execution activity with result summary, duration and success state.
+- Dedicated module pages instead of one flat navigation tree.
+- Explorer retained as a secondary complete resource browser.
+- Two-panel command workspace for input and structured output.
+- Structured tables, property grids, lists, badges and optional raw JSON.
+- Responsive desktop, tablet and mobile layouts.
+- Theme packages and specialized application extensions.
 
 ## Basic use
 
@@ -25,36 +29,47 @@ webgui = SCICWebGUI(
     scic,
     WebGUIConfig(
         application_name="OpenShell Manager",
-        application_description="OSAM administrative interface",
+        application_description="OSAM administrative control plane",
+        dashboard_title="OpenShell Command Center",
+        dashboard_description="Manage runtime, services and trusted infrastructure.",
+        brand_mark="OS",
         default_variant="dark",
+        dashboard_auto_probe=False,
     ),
 )
 
 app = webgui.app
 ```
 
-## Semantic metadata
+The same SCIC registry can be consumed by `scic-cli`; no command is duplicated in the WebGUI.
+
+## Dashboard metadata
+
+The dashboard works without special metadata, but semantic metadata improves placement and behavior.
+
+### Quick action
 
 ```python
 metadata={
     "title": "Import Root Authority",
     "category": "Trust",
-    "icon": "◈",
-    "submit_label": "Import",
+    "icon": "◇",
+    "quick_action": True,
+    "submit_label": "Import profile",
 }
 ```
 
-Parameter:
+### Health probe
+
+A parameterless operation named `status`, `health`, `summary` or `info` is automatically eligible for the health scan. It can also be declared explicitly:
 
 ```python
 metadata={
-    "label": "Public profile",
-    "input_kind": "json-file",
-    "accepted_extensions": [".json"],
+    "dashboard_probe": True,
 }
 ```
 
-Destructive operation:
+### Destructive command
 
 ```python
 metadata={
@@ -63,9 +78,9 @@ metadata={
 }
 ```
 
-## Specialized extensions
+## Specialized application extensions
 
-Configure ES modules:
+The generic dashboard remains the fallback. Applications may add widgets, module panels, renderers or complete views.
 
 ```python
 WebGUIConfig(
@@ -73,28 +88,37 @@ WebGUIConfig(
 )
 ```
 
-Register a result renderer:
+### Dashboard widget
 
 ```javascript
-SCICWebGUI.registerResultRenderer(
-  ({ resource, value }) =>
-    resource?.path.endsWith("/services/list") && Array.isArray(value),
-  ({ value }) => `<div class="service-list">...</div>`,
+SCICWebGUI.registerDashboardWidget(
+  "cluster-status",
+  ({ state }) => `
+    <header class="panel-heading">
+      <div><span class="eyebrow">Cluster</span><h2>Manager nodes</h2></div>
+    </header>
+    <strong>${state.clusterCount ?? 0}</strong>
+  `,
   100,
 );
 ```
 
-Register an input renderer:
+### Module panel
 
 ```javascript
-SCICWebGUI.registerInputRenderer(
-  ({ metadata }) => metadata.format === "uuid",
-  ({ index }) => `<input class="control" name="arg-${index}" pattern="[0-9a-f-]+">`,
+SCICWebGUI.registerModulePanel(
+  ({ resource }) => resource.path.endsWith("/root-authority"),
+  ({ resource }) => `
+    <section class="dashboard-panel">
+      <h2>Trust overview</h2>
+      <p>Specialized content for ${resource.name}</p>
+    </section>
+  `,
   100,
 );
 ```
 
-Replace a complete command view:
+### Complete command view
 
 ```javascript
 SCICWebGUI.registerView(
@@ -109,7 +133,24 @@ SCICWebGUI.registerView(
 );
 ```
 
-The generic renderer remains available as a fallback for every uncustomized resource.
+## Configuration
+
+Relevant dashboard fields:
+
+```python
+WebGUIConfig(
+    dashboard_title="Operations",
+    dashboard_description="Administrative command center",
+    brand_mark="OS",
+    search_enabled=True,
+    activity_enabled=True,
+    favorites_enabled=True,
+    dashboard_auto_probe=False,
+    max_activity_entries=50,
+)
+```
+
+`dashboard_auto_probe` is disabled by default so the WebGUI never invokes an operation automatically unless the application opts in.
 
 ## Development
 

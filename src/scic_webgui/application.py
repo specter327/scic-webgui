@@ -18,7 +18,7 @@ from .themes import ThemeRegistry
 
 
 class SCICWebGUI:
-    """Adaptive, extensible web application around one SCIC registry."""
+    """Interactive, extensible dashboard around one SCIC registry."""
 
     def __init__(
         self,
@@ -80,6 +80,14 @@ class SCICWebGUI:
                 "extensionScripts": list(self.config.extension_scripts),
                 "homeTitle": self.config.home_title,
                 "homeDescription": self.config.home_description,
+                "dashboardTitle": self.config.dashboard_title,
+                "dashboardDescription": self.config.dashboard_description,
+                "brandMark": self.config.brand_mark,
+                "searchEnabled": self.config.search_enabled,
+                "activityEnabled": self.config.activity_enabled,
+                "favoritesEnabled": self.config.favorites_enabled,
+                "dashboardAutoProbe": self.config.dashboard_auto_probe,
+                "maxActivityEntries": self.config.max_activity_entries,
             }
 
         return app
