@@ -15,10 +15,12 @@ class WebGUIConfig:
     show_raw_results: bool = True
     open_browser: bool = False
     cors_origins: tuple[str, ...] = field(default_factory=tuple)
+    extension_scripts: tuple[str, ...] = field(default_factory=tuple)
 
     def __post_init__(self) -> None:
         self.application_name = self.application_name.strip() or "SCIC"
         self.api_prefix = "/" + self.api_prefix.strip("/")
+        self.extension_scripts = tuple(str(path).strip() for path in self.extension_scripts if str(path).strip())
         if not 1 <= self.port <= 65535:
             raise ValueError("port must be between 1 and 65535")
         if self.default_variant not in {"light", "dark", "system"}:
