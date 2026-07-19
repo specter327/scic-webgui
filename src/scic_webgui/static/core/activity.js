@@ -6,9 +6,10 @@ function persist() {
 }
 
 export function recordActivity(entry) {
+  if (state.config?.activityEnabled === false) return;
   const maximum = Number(state.config?.maxActivityEntries || 50);
   state.activity.unshift({
-    id: crypto.randomUUID?.() || `${Date.now()}-${Math.random()}`,
+    id: globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`,
     timestamp: new Date().toISOString(),
     ...entry,
   });
