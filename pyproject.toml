@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "scic-webgui"
-version = "0.2.0"
-description = "Ready-to-use generic web application client for SCIC Framework"
+version = "0.3.0"
+description = "Interactive dashboard application client for SCIC Framework"
 readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE"]
