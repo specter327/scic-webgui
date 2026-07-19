@@ -49,6 +49,7 @@ class SCICWebGUI:
                 "allowThemeSelection": self.config.allow_theme_selection,
                 "showMetadata": self.config.show_metadata,
                 "showRawResults": self.config.show_raw_results,
+                "extensionScripts": list(self.config.extension_scripts),
             }
         return app
 
