@@ -1,20 +1,46 @@
 # scic-webgui
 
-Generic, ready-to-use web application for [`scic-framework`](https://github.com/specter327/scic-framework).
+Adaptive, ready-to-use web application for [`scic-framework`](https://github.com/specter327/scic-framework).
 
-`scic-webgui` discovers the SCIC tree, renders contexts and executables, generates parameter forms, executes functions and presents validated results. It ships as a Python package with a self-contained SPA: no Node.js build is required by applications consuming it.
+`scic-webgui` discovers the SCIC tree and provides a complete administrative interface without requiring Node.js. Version 0.2 introduces a hybrid rendering model: every command still has a generic fallback, but inputs, results and complete resource views can be specialized without changing the SCIC application.
+
+## Design model
+
+```text
+SCIC registry
+    │
+    ▼
+Generic application shell
+    ├── automatic navigation
+    ├── adaptive input renderers
+    ├── adaptive result renderers
+    └── fallback JSON renderer
+              │
+              ▼
+Optional application extensions
+    ├── custom input widgets
+    ├── custom result views
+    └── complete path-specific views
+```
+
+The generic layer is a safety net, not a visual restriction.
 
 ## Features
 
-- Generic navigation generated from `SCIC.export_tree()`.
-- One independent `SCICSession` per browser session.
-- Dynamic forms from `Executable.parameters` schemas.
-- Structured execution through `/invoke` and textual execution through `/execute`.
-- Built-in responsive light and dark themes.
-- Theme packages discovered through Python entry points.
-- JSON-safe result serialization.
+- Navigation generated from `SCIC.export_tree()`.
+- Independent `SCICSession` per browser session.
+- Responsive desktop and mobile application shell.
+- Forms generated from parameter schemas and metadata.
+- Native widgets for booleans, numbers, passwords, selections, multiline text and JSON files.
+- Drag-and-drop file fields.
+- Automatic tables for arrays of objects.
+- Property grids for object results.
+- Structured lists, badges and nested detail views.
+- Raw JSON available as an optional secondary view.
+- Extension API for custom inputs, custom results and complete views.
+- Extension scripts loaded by configuration.
+- Light and dark theme packages.
 - Embeddable FastAPI application.
-- Generic command-line launcher.
 - No frontend framework or npm dependency required at runtime.
 
 ## Install
@@ -39,36 +65,134 @@ webgui = SCICWebGUI(
         open_browser=True,
     ),
 )
+
 webgui.run()
 ```
 
-The FastAPI application can also be mounted or served by an existing process:
+The FastAPI application can also be mounted:
 
 ```python
 webgui = SCICWebGUI(scic)
-app = webgui.app
+app.mount("/admin", webgui.app)
 ```
 
-## Generic launcher
+## Semantic metadata
 
-Expose a SCIC instance or a zero-argument factory:
+Applications can improve the automatic interface through neutral SCIC metadata.
 
 ```python
-# application.py
-application = build_scic()
+metadata={
+    "title": "Import Root Authority",
+    "icon": "shield-plus",
+    "category": "Trust",
+    "submit_label": "Import authority",
+}
 ```
 
-Run:
+Parameter metadata:
 
-```bash
-scic-webgui application:application --name "My application" --port 8080 --open-browser
+```python
+metadata={
+    "title": "Public profile",
+    "description": "Select the exported public identity profile.",
+    "input_kind": "json-file",
+    "accepted_extensions": [".json"],
+}
 ```
 
-Equivalent:
+Destructive operations:
 
-```bash
-python -m scic_webgui application:application
+```python
+metadata={
+    "danger": "destructive",
+    "confirmation_required": True,
+    "confirmation_message": "Remove this authority?",
+}
 ```
+
+These values describe intent. They do not couple SCIC to HTML components.
+
+## Specialized browser extensions
+
+Provide one or more ES modules:
+
+```python
+WebGUIConfig(
+    extension_scripts=(
+        "/static/osam-webgui.js",
+    ),
+)
+```
+
+Each module can use the global extension API.
+
+### Custom result renderer
+
+```javascript
+SCICWebGUI.registerResultRenderer(
+  ({ resource, value }) =>
+    resource.path.endsWith("/services/list") && Array.isArray(value),
+  ({ value }) => `
+    <div class="service-grid">
+      ${value.map(service => `
+        <article>
+          <strong>${service.name}</strong>
+          <span>${service.active ? "Running" : "Stopped"}</span>
+        </article>
+      `).join("")}
+    </div>
+  `,
+  100
+);
+```
+
+### Custom input renderer
+
+```javascript
+SCICWebGUI.registerInputRenderer(
+  ({ metadata }) => metadata.input_kind === "entity-uid",
+  ({ index, schema }) => `
+    <input
+      class="input entity-selector"
+      name="arg-${index}"
+      placeholder="${schema.name}"
+    >
+  `,
+  100
+);
+```
+
+### Complete specialized view
+
+```javascript
+SCICWebGUI.registerView(
+  "/osam/root-authority/list",
+  async ({ resource, api, mount, helpers }) => {
+    const response = await api("/invoke", {
+      method: "POST",
+      body: JSON.stringify({ path: resource.path, arguments: [] })
+    });
+
+    mount.innerHTML = `
+      <section class="authority-view">
+        <h2>Trusted authorities</h2>
+        ${helpers.renderValue(response.results, resource)}
+      </section>
+    `;
+  }
+);
+```
+
+The specialized view belongs to the application extension package. OSAM business logic and the SCIC registry remain unchanged.
+
+## Result selection order
+
+1. Complete path-specific view.
+2. Registered specialized result renderer.
+3. Built-in table, property, list or primitive renderer.
+4. Optional raw JSON representation.
+
+This guarantees that every SCIC command remains usable even without a specialized implementation.
 
 ## HTTP API
 
@@ -77,48 +201,21 @@ python -m scic_webgui application:application
 | GET | `/api/scic/v1/tree` | Export complete SCIC tree |
 | GET | `/api/scic/v1/context` | Current browser session context |
 | GET | `/api/scic/v1/describe?path=...` | Describe a resource |
-| POST | `/api/scic/v1/invoke` | Invoke an executable with textual arguments |
-| POST | `/api/scic/v1/execute` | Execute a complete textual instruction |
+| POST | `/api/scic/v1/invoke` | Invoke an executable |
+| POST | `/api/scic/v1/execute` | Execute textual instruction |
 | POST | `/api/scic/v1/navigate` | Navigate to a context |
-| POST | `/api/scic/v1/back` | Move to the parent context |
+| POST | `/api/scic/v1/back` | Move to parent context |
 | POST | `/api/scic/v1/reset` | Return to root |
 | GET | `/api/scic/v1/themes` | Discover theme packages |
 
-The browser stores the `X-SCIC-Session` identifier returned by the server. The registry remains shared while navigation state stays isolated.
-
 ## Theme packages
-
-A theme package is installed like any other Python dependency and exports a `ThemePackage` through an entry point:
 
 ```toml
 [project.entry-points."scic_webgui.themes"]
 openshell = "scic_webgui_theme_openshell:theme_package"
 ```
 
-```python
-from scic_webgui import Theme, ThemePackage
-
-light = Theme(
-    identifier="openshell-light",
-    name="OpenShell Light",
-    variant="light",
-    tokens={
-        "background": "#f4f6f9",
-        "surface": "#ffffff",
-        "text": "#152033",
-        "primary": "#3f51e8",
-        # Include the complete token set for best results.
-    },
-)
-
-theme_package = ThemePackage(
-    identifier="openshell",
-    name="OpenShell",
-    themes=(light, dark),
-)
-```
-
-A package can provide `light`, `dark`, or both variants. Themes only define visual tokens; they do not alter application logic.
+Themes define visual tokens. Extensions define specialized interaction and presentation.
 
 ## Development
 
@@ -127,18 +224,6 @@ chmod +x check.sh publish.sh
 ./check.sh
 ```
 
-Publish to TestPyPI:
-
-```bash
-./publish.sh --test
-```
-
-Publish to PyPI:
-
-```bash
-./publish.sh
-```
-
 ## Current scope
 
-Version 0.1.0 is intentionally focused on the generic application shell. Authentication, authorization, remote SCIC clients, streaming progress, specialized views and custom widget entry points are extension points for later versions.
+Version 0.2 is an extensible application-shell prototype. Authentication, authorization, remote SCIC clients and streaming progress remain future layers.
