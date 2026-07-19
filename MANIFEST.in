@@ -1,0 +1,2 @@
+recursive-include src/scic_webgui/static *
+include README.md LICENSE
